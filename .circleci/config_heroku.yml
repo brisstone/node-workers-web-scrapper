@@ -1,0 +1,47 @@
+version: 2.1
+
+orbs:
+  heroku: circleci/heroku@0.0.10
+
+jobs:
+  build:
+    docker:
+      - image: circleci/node:14
+    working_directory: ~/repo
+    steps:
+      - checkout
+      # install dependencies
+      - run:
+          name: Install Dependencies
+          command: npm install
+      - run:
+          name: Run tests
+          command: npm run test
+  deploy-dev:
+    docker:
+        - image: circleci/node:14
+    steps:
+      - checkout
+      # install dependencies
+      - setup_remote_docker:
+          version: 20.10.12
+          docker_layer_caching: true
+      - run:
+          name: build and push docker image to heroku
+          command: | 
+            sudo curl https://cli-assets.heroku.com/install.sh | sh
+            HEROKU_API_KEY=${HEROKU_TOKEN} heroku container:login
+            HEROKU_API_KEY=${HEROKU_TOKEN} heroku container:push  -a rocky-plains-18573 web
+            HEROKU_API_KEY=${HEROKU_TOKEN} heroku container:release  -a rocky-plains-18573 web 
+
+workflows:
+  version: 2
+  ogfza_deploy:
+    jobs:
+      - build
+      - deploy-dev: # Use the pre-configured job, deploy-via-git
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
